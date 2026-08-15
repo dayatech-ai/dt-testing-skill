@@ -1,0 +1,91 @@
+name: Test and release
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: bash -n scripts/install.sh
+      - run: python3 -m unittest discover -s tests -v
+      - run: python3 scripts/release.py --build v0.0.0
+
+  test-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m unittest discover -s tests -p test_release.py -v
+      - run: python scripts/release.py --build v0.0.0
+      - name: Test Windows PowerShell 5.1
+        shell: powershell
+        run: ./tests/test_install.ps1
+      - name: Test PowerShell 7
+        shell: pwsh
+        run: ./tests/test_install.ps1
+
+  release:
+    needs: [test, test-windows]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: dt-testing-release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Determine version from commits
+        id: version
+        env:
+          RELEASE_COMMIT: ${{ github.sha }}
+        run: |
+          git fetch origin main --tags
+          if [ "$(git rev-parse origin/main)" != "$RELEASE_COMMIT" ]; then
+            echo 'A newer commit is on main; its workflow will release the combined changes.'
+            exit 0
+          fi
+          python3 scripts/release.py
+      - name: Build release assets
+        if: steps.version.outputs.tag != ''
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: python3 scripts/release.py --build "$RELEASE_TAG"
+      - name: Publish GitHub Release
+        if: steps.version.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          RELEASE_COMMIT: ${{ github.sha }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            if [ "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = 'false' ]; then
+              echo 'Release already published; keeping existing assets.'
+              exit 0
+            fi
+          else
+            gh release create "$RELEASE_TAG" --target "$RELEASE_COMMIT" --title "$RELEASE_TAG" --generate-notes --draft
+          fi
+          gh release upload "$RELEASE_TAG" dist/dt-testing.zip dist/install.sh dist/install.ps1 dist/SHA256SUMS --clobber
+          gh release edit "$RELEASE_TAG" --draft=false --latest
