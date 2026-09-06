@@ -1,6 +1,6 @@
 # DT Testing Skill
 
-Skill testing untuk Claude Code, Antigravity, OpenCode, dan Codex. Memilih test sesuai perubahan, menyediakan cara menjalankan test, dan mewajibkan agent menjalankan seluruh suite setelah menambah atau mengubah test.
+Skill testing untuk Claude Code, Antigravity, OpenCode, dan Codex. Unit test dan integration test wajib ada dan mencakup perilaku dalam lingkup tugas; coverage yang sudah memadai dapat digunakan kembali. E2E dan security test dipilih sesuai kebutuhan. Skill menyediakan cara menjalankan test dan mewajibkan agent menjalankan seluruh suite setelah menambah atau mengubah test.
 
 ## Install atau update: satu perintah
 

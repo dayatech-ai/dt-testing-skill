@@ -2,10 +2,10 @@
 
 A compact language-agnostic coding-agent skill for selecting and executing relevant:
 
-- Unit tests
-- Integration tests
-- E2E tests
-- Security tests
+- Unit tests (mandatory)
+- Integration tests (mandatory)
+- E2E tests (based on critical flows)
+- Security tests (based on security risk)
 
 `SKILL.md` is intentionally small to reduce prompt/token usage. Detailed rules live under `references/` and should be read only when needed.
 

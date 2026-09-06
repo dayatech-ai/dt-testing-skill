@@ -2,7 +2,7 @@
 
 ## Unit test
 
-Use when behavior can be validated in isolation.
+Required. Validate behavior in isolation; reuse adequate existing coverage or add/update tests for the behavior in scope.
 
 Typical triggers:
 - business logic
@@ -17,7 +17,7 @@ Prefer many fast unit tests for logic-heavy code.
 
 ## Integration test
 
-Use when correctness depends on components working together.
+Required. Validate actual components working together; reuse adequate existing coverage or add/update tests at a relevant boundary for the behavior in scope.
 
 Typical boundaries:
 - API/controller -> service
@@ -64,16 +64,18 @@ Security tests should verify denial behavior as well as allowed behavior.
 
 Select by observable behavior and risk, not by file count.
 
+Unit and integration coverage must both exist. Do not add duplicate or placeholder tests merely to satisfy the requirement. If a meaningful unit target or integration boundary cannot be identified, report the missing coverage and blocker; do not mark the requirement complete or invent production components solely for testing.
+
 Examples:
 
 Pure calculation change:
 - Unit: required
-- Integration: usually not needed
+- Integration: required at the calculation's consumer or module boundary
 - E2E: not needed
 - Security: not needed
 
 New protected API endpoint:
-- Unit: if business logic exists
+- Unit: required for isolated behavior such as validation or decision rules
 - Integration: required
 - E2E: optional depending on flow criticality
 - Security: required

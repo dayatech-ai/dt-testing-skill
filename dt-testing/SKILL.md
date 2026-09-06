@@ -1,6 +1,6 @@
 ---
 name: dt-testing
-description: Adaptive, language-agnostic testing for new features, existing code, bug fixes, and test audits. Selects relevant unit, integration, E2E, and security tests from repository context.
+description: Adaptive, language-agnostic testing for new features, existing code, bug fixes, and test audits. Requires unit and integration tests, with E2E and security tests selected from repository context.
 ---
 
 # Adaptive Testing
@@ -11,8 +11,8 @@ Use this skill after production-code changes or when tests are requested.
 
 1. Inspect the repository before choosing tools or frameworks.
 2. Reuse the existing test stack and conventions when available.
-3. Select tests based on changed behavior, boundaries, risk, and critical flows.
-4. Do not require every change to have every test type.
+3. Unit tests and integration tests are mandatory. Ensure both exist and cover the behavior in scope; add or update missing coverage and reuse adequate existing tests.
+4. Select additional E2E and security tests based on changed behavior, boundaries, risk, and critical flows. Neither replaces mandatory unit or integration coverage.
 5. Backend E2E is optional when integration coverage is sufficient.
 6. For bug fixes, prefer a failing regression test before the fix when practical.
 7. Do not change production behavior only to satisfy an incorrect test.

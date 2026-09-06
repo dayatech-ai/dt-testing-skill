@@ -8,7 +8,7 @@ Detect the mode from the request and repository state.
 
 1. Understand expected behavior.
 2. Implement the feature.
-3. Select relevant test types.
+3. Plan mandatory unit and integration coverage, plus relevant additional test types.
 4. Add tests with the feature.
 5. Follow the test execution and completion requirements below.
 6. Review failures and test quality.
@@ -18,7 +18,7 @@ Detect the mode from the request and repository state.
 1. Inspect production behavior first.
 2. Inspect existing tests.
 3. Identify untested observable behavior and boundaries.
-4. Add missing tests without inventing requirements.
+4. Ensure unit and integration coverage both exist; add missing tests without inventing requirements.
 5. Follow the test execution and completion requirements below.
 
 ### Change / bug fix
@@ -27,13 +27,13 @@ Detect the mode from the request and repository state.
 2. Identify impacted behavior.
 3. For bugs, reproduce with a failing test when practical.
 4. Implement the fix or change.
-5. Update/add relevant tests.
+5. Update/add tests so both unit and integration coverage address the affected behavior.
 6. Follow the test execution and completion requirements below.
 
 ### Test audit
 
 1. Inspect existing tests and production code.
-2. Identify missing critical coverage, weak assertions, duplication, and excessive mocking.
+2. Check that unit and integration tests both exist and cover the behavior in scope; identify missing critical coverage, weak assertions, duplication, and excessive mocking.
 3. Prioritize gaps by business risk and change frequency.
 4. Add or improve only high-value tests.
 5. When tests are added or updated, follow the test execution and completion requirements below.
@@ -49,6 +49,8 @@ Detect the mode from the request and repository state.
 
 ### Run and resolve
 
+Before completion, confirm both meaningful unit and integration coverage exist for the scope. Adequate existing tests satisfy this requirement without duplication. Missing coverage remains an unresolved requirement, even if the available suite passes. In a read-only audit, report missing coverage without editing files.
+
 1. During implementation, targeted tests may provide faster feedback.
 2. After completing test additions or updates, every agent must execute the full project suite using the documented commands. Selecting relevant test types controls which tests to add, not which existing suites to run.
 3. Inspect failures, correct their causes within the task's authorized scope, then rerun the full suite after the final fix. Do not delete, skip, weaken assertions, suppress exit codes, or alter test discovery just to obtain a passing result.
@@ -58,10 +60,11 @@ Detect the mode from the request and repository state.
 ## Output expectation
 
 Report:
-- test types selected and why
+- mandatory unit and integration coverage, including reused tests and any gaps
+- additional test types selected and why
 - tests added/updated
 - test command/configuration and documentation added/updated, with file paths
 - commands run
 - full-suite pass/fail summary, including skipped tests and blocked suites
-- test types not added and rationale
+- optional test types not added and rationale
 - unresolved failures or prerequisites and their effect on completion
