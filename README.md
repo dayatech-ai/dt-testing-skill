@@ -115,6 +115,48 @@ Perbaiki kegagalan dan laporkan hasil akhirnya.
 
 Skill mengarahkan agent saat dipakai. Workflow paket ini menguji dan merilis skill/installer; instalasi skill tidak memasang pipeline CI atau hook PR pada proyek pengguna.
 
+### Selalu gunakan skill saat membuat test
+
+Setelah skill terpasang, tambahkan aturan berikut ke file instruksi proyek yang dibaca agent, misalnya `AGENTS.md`, `CLAUDE.md`, atau file aturan agent lainnya. Gabungkan dengan instruksi yang sudah ada. Dengan begitu, kamu tidak perlu menyebut skill di setiap permintaan testing.
+
+Versi bahasa Indonesia:
+
+```markdown
+## Testing
+
+- Selalu gunakan skill `dt-testing` ketika membuat atau memperbarui test,
+  termasuk test untuk fitur baru dan perbaikan bug.
+- Untuk tugas pembuatan atau perubahan fitur, lanjutkan implementasi dengan
+  membuat atau memperbarui test menggunakan skill `dt-testing`.
+- Baca `SKILL.md` milik `dt-testing` dan referensi yang diwajibkannya, lalu
+  ikuti aturan cakupan serta kualitas test. Gunakan test existing yang memadai.
+- Jalankan seluruh suite test proyek setelah menambah atau mengubah test,
+  perbaiki kegagalan, dan laporkan hasil eksekusi serta review kualitas test.
+  Jika ada test yang tidak bisa dijalankan, jelaskan penghambatnya.
+- Jika skill tidak tersedia atau tidak dapat dibaca, laporkan agar skill
+  dipasang atau lokasinya diperbaiki; jangan mengklaim sudah mengikutinya.
+```
+
+Versi bahasa Inggris (pilih salah satu versi untuk file instruksi proyek):
+
+```markdown
+## Testing
+
+- Always use the `dt-testing` skill when creating or updating tests,
+  including tests for new features and bug fixes.
+- When implementing or modifying a feature, follow implementation by
+  creating or updating tests using the `dt-testing` skill.
+- Read the `dt-testing` skill's `SKILL.md` and its mandatory references,
+  then follow its coverage and test quality rules. Reuse adequate existing tests.
+- Run the full project test suite after adding or changing tests,
+  fix failures, and report execution results and the test quality review.
+  If any tests cannot run, explain the blockers.
+- If the skill is unavailable or cannot be read, report the issue so it can
+  be installed or its location corrected; do not claim to have followed it.
+```
+
+Aturan ini mendukung alur **buat fitur → buat/update test mengikuti dt-testing → jalankan seluruh suite → perbaiki kegagalan → laporkan hasil**. File instruksi tersebut perlu ditambahkan sendiri ke proyek tujuan; installer skill tidak membuat atau mengubahnya secara otomatis.
+
 ## Pengujian dan build lokal
 
 Dari root paket, jalankan seluruh suite:
