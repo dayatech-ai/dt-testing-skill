@@ -4,6 +4,8 @@
 
 Detect the mode from the request and repository state.
 
+In every mode, read and apply `test-quality.md` before designing, adding, updating, reusing, or auditing any tests. Its quality criteria apply to every test type.
+
 ### New feature
 
 1. Understand expected behavior.
@@ -49,6 +51,8 @@ Detect the mode from the request and repository state.
 
 ### Run and resolve
 
+Review all tests added, updated, or relied on within the task scope against `test-quality.md`. Resolve quality issues within scope before the final full-suite run, and report any remaining quality gaps separately from execution results.
+
 Before completion, confirm both meaningful unit and integration coverage exist for the scope. Adequate existing tests satisfy this requirement without duplication. Missing coverage remains an unresolved requirement, even if the available suite passes. In a read-only audit, report missing coverage without editing files.
 
 1. During implementation, targeted tests may provide faster feedback.
@@ -63,6 +67,7 @@ Report:
 - mandatory unit and integration coverage, including reused tests and any gaps
 - additional test types selected and why
 - tests added/updated
+- quality review against `test-quality.md`, including issues corrected and unresolved quality gaps
 - test command/configuration and documentation added/updated, with file paths
 - commands run
 - full-suite pass/fail summary, including skipped tests and blocked suites

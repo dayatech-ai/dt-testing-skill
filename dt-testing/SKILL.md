@@ -19,6 +19,7 @@ Use this skill after production-code changes or when tests are requested.
 8. After adding or updating tests, every agent must run the full project test suite, including existing tests, before declaring completion. Targeted runs alone are insufficient.
 9. Ensure the project has a documented, reproducible way to run all tests. If missing, add an appropriate test command and usage instructions using the existing stack.
 10. Resolve test failures and rerun the full suite after fixes. Never claim all tests pass when any suite failed, was skipped, or could not run; report unresolved blockers explicitly.
+11. Always read and apply `references/test-quality.md` when designing, adding, updating, reusing, or auditing tests. Its quality criteria are mandatory for every test type, including unit, integration, E2E, and security. Review test quality before completion; passing execution alone is insufficient.
 
 ## References
 
@@ -26,6 +27,6 @@ Read only what is needed:
 
 - `references/workflow.md` — task modes, required test execution setup, full-suite verification, and reporting; always read when adding or updating tests
 - `references/test-selection.md` — when to use unit, integration, E2E, security
-- `references/test-quality.md` — test quality and review rules
+- `references/test-quality.md` — mandatory quality criteria for all tests; always read when designing, adding, updating, reusing, or auditing tests
 - `references/security.md` — security test guidance
 - `references/stack-detection.md` — language/framework/test-stack discovery

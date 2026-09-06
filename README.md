@@ -103,6 +103,8 @@ Lokasi mengacu pada dokumentasi resmi: [Claude Code](https://code.claude.com/doc
 
 ## Pemakaian
 
+Semua jenis test wajib mengikuti kriteria di `dt-testing/references/test-quality.md`. Agent wajib membaca dan menerapkannya saat merancang, menambah, mengubah, menggunakan kembali, atau mengaudit test, serta melaporkan hasil review kualitas. Suite yang lulus saja belum memenuhi kewajiban review kualitas.
+
 Buka proyek tujuan dan mulai sesi agent baru. Di Claude Code gunakan `/dt-testing`; di Codex gunakan `$dt-testing`. Di Antigravity dan OpenCode, minta agent menggunakan skill bernama `dt-testing`:
 
 ```text

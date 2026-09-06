@@ -1,6 +1,8 @@
 # Test Quality
 
-A passing test suite is not enough. Review whether tests are meaningful.
+A passing test suite is not enough. The criteria below are mandatory for all test types, including unit, integration, E2E, and security tests. Apply them when designing, adding, updating, reusing, or auditing tests, including existing tests relied on for coverage.
+
+Before completion, review every test added, updated, or relied on within the task scope against these criteria. Apply relevant behavior cases across the coverage rather than forcing every individual test to cover every case. Fix quality issues within the authorized scope and report unresolved issues explicitly. In a read-only audit, report findings without editing tests. Do not claim quality review is complete based only on a passing suite.
 
 ## Good tests
 
