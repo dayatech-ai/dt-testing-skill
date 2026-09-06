@@ -10,7 +10,7 @@ In every mode, read and apply `test-quality.md` before designing, adding, updati
 
 1. Understand expected behavior.
 2. Implement the feature.
-3. Plan mandatory unit and integration coverage, plus relevant additional test types.
+3. Plan mandatory unit, integration, and project-appropriate security coverage, plus relevant additional test types.
 4. Add tests with the feature.
 5. Follow the test execution and completion requirements below.
 6. Review failures and test quality.
@@ -20,7 +20,7 @@ In every mode, read and apply `test-quality.md` before designing, adding, updati
 1. Inspect production behavior first.
 2. Inspect existing tests.
 3. Identify untested observable behavior and boundaries.
-4. Ensure unit and integration coverage both exist; add missing tests without inventing requirements.
+4. Ensure unit, integration, and project-appropriate security coverage all exist; add missing tests without inventing requirements.
 5. Follow the test execution and completion requirements below.
 
 ### Change / bug fix
@@ -29,13 +29,13 @@ In every mode, read and apply `test-quality.md` before designing, adding, updati
 2. Identify impacted behavior.
 3. For bugs, reproduce with a failing test when practical.
 4. Implement the fix or change.
-5. Update/add tests so both unit and integration coverage address the affected behavior.
+5. Update/add tests so unit, integration, and project-appropriate security coverage address the affected behavior.
 6. Follow the test execution and completion requirements below.
 
 ### Test audit
 
 1. Inspect existing tests and production code.
-2. Check that unit and integration tests both exist and cover the behavior in scope; identify missing critical coverage, weak assertions, duplication, and excessive mocking.
+2. Check that unit, integration, and project-appropriate security tests all exist and cover the behavior in scope; identify missing critical coverage, weak assertions, duplication, and excessive mocking.
 3. Prioritize gaps by business risk and change frequency.
 4. Add or improve only high-value tests.
 5. When tests are added or updated, follow the test execution and completion requirements below.
@@ -53,7 +53,7 @@ In every mode, read and apply `test-quality.md` before designing, adding, updati
 
 Review all tests added, updated, or relied on within the task scope against `test-quality.md`. Resolve quality issues within scope before the final full-suite run, and report any remaining quality gaps separately from execution results.
 
-Before completion, confirm both meaningful unit and integration coverage exist for the scope. Adequate existing tests satisfy this requirement without duplication. Missing coverage remains an unresolved requirement, even if the available suite passes. In a read-only audit, report missing coverage without editing files.
+Before completion, confirm meaningful unit, integration, and project-appropriate security coverage all exist for the scope. Adequate existing tests satisfy this requirement without duplication. Missing coverage remains an unresolved requirement, even if the available suite passes. In a read-only audit, report missing coverage without editing files.
 
 1. During implementation, targeted tests may provide faster feedback.
 2. After completing test additions or updates, every agent must execute the full project suite using the documented commands. Selecting relevant test types controls which tests to add, not which existing suites to run.
@@ -64,12 +64,13 @@ Before completion, confirm both meaningful unit and integration coverage exist f
 ## Output expectation
 
 Report:
-- mandatory unit and integration coverage, including reused tests and any gaps
-- additional test types selected and why
+- mandatory unit, integration, and project-appropriate security coverage, including reused tests and any gaps
+- security risks tested, coverage locations, and rationale for inapplicable security categories
+- additional E2E tests selected and why
 - tests added/updated
 - quality review against `test-quality.md`, including issues corrected and unresolved quality gaps
 - test command/configuration and documentation added/updated, with file paths
 - commands run
 - full-suite pass/fail summary, including skipped tests and blocked suites
-- optional test types not added and rationale
+- E2E tests not added and rationale
 - unresolved failures or prerequisites and their effect on completion

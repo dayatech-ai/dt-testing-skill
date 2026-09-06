@@ -44,7 +44,7 @@ Avoid E2E for every branch or validation case; keep E2E coverage small and high-
 
 ## Security test
 
-Use when changes affect security boundaries or untrusted input.
+Required for every project. Read `security.md` and select meaningful cases from the project’s actual inputs, trust boundaries, and risks, prioritizing behavior introduced or affected by the change. Reuse adequate existing coverage or add/update missing tests.
 
 Typical triggers:
 - authentication
@@ -64,7 +64,7 @@ Security tests should verify denial behavior as well as allowed behavior.
 
 Select by observable behavior and risk, not by file count.
 
-Unit and integration coverage must both exist. Do not add duplicate or placeholder tests merely to satisfy the requirement. If a meaningful unit target or integration boundary cannot be identified, report the missing coverage and blocker; do not mark the requirement complete or invent production components solely for testing.
+Unit, integration, and project-appropriate security coverage must all exist. Do not add duplicate or placeholder tests merely to satisfy the requirement. If a meaningful unit target, integration boundary, or security case cannot be identified, report the missing coverage and blocker; do not mark the requirement complete or invent production components solely for testing.
 
 Examples:
 
@@ -72,7 +72,7 @@ Pure calculation change:
 - Unit: required
 - Integration: required at the calculation's consumer or module boundary
 - E2E: not needed
-- Security: not needed
+- Security: required; test relevant numeric input limits or resource bounds at the exposed consumer boundary, based on actual project risks
 
 New protected API endpoint:
 - Unit: required for isolated behavior such as validation or decision rules
