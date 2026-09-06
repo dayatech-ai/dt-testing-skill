@@ -31,16 +31,22 @@ Prefer real dependencies when practical. Mock external systems only when they ar
 
 ## E2E test
 
-Use for critical end-to-end business or user flows.
+Frontend E2E is mandatory for every user-facing case in the task scope, not just critical journeys. For a whole-project testing task, inventory all frontend features; for a feature/change task, inventory all cases of the affected frontend behavior.
 
-Frontend E2E is recommended for critical user journeys.
+Build a case inventory from requirements and observable behavior: successful flows, validation failures, error/retry paths, navigation, relevant loading/empty states, permissions, and boundary cases. Map every applicable case to an existing or new browser E2E test. Include relevant role/state variations; do not interpret all cases as every possible input value or internal implementation branch.
+
+Use Playwright for frontend E2E if the project has no E2E framework. Retain an existing framework that supports the required browser flows and project execution setup; missing test cases alone do not justify replacing it. Follow `stack-detection.md` when assessing the existing stack.
+
+Run the application in a browser using the selected E2E stack. Assert user-visible outcomes through the complete flow and use actual application services in a controlled test environment where applicable. Component tests or fully mocked application flows alone do not satisfy E2E coverage. Reuse adequate existing tests and follow `test-quality.md`; unit and integration coverage does not waive the E2E requirement.
+
+Missing cases or blocked browser/service setup remain unresolved requirements. Report them explicitly instead of declaring frontend E2E complete. Projects with no frontend have no frontend E2E requirement.
 
 Backend E2E is optional. Add it when:
 - a critical workflow spans multiple API calls
 - integration tests do not sufficiently prove the full business flow
 - system-level orchestration is important
 
-Avoid E2E for every branch or validation case; keep E2E coverage small and high-value.
+For backend-only E2E, focus on high-value system flows; the frontend requirement above still covers all applicable user-facing cases.
 
 ## Security test
 
@@ -71,11 +77,12 @@ Examples:
 Pure calculation change:
 - Unit: required
 - Integration: required at the calculation's consumer or module boundary
-- E2E: not needed
+- Frontend E2E: required for all affected user-facing calculation cases when exposed in the frontend; not applicable to a backend-only/library change
 - Security: required; test relevant numeric input limits or resource bounds at the exposed consumer boundary, based on actual project risks
 
 New protected API endpoint:
 - Unit: required for isolated behavior such as validation or decision rules
 - Integration: required
-- E2E: optional depending on flow criticality
+- Frontend E2E: required for all affected UI cases if consumed by the frontend
+- Backend E2E: optional depending on flow criticality
 - Security: required

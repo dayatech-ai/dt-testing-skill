@@ -33,4 +33,6 @@ These are examples only; do not assume the test framework from language alone.
 
 Do not introduce a new test framework when the repository already has an established stack unless explicitly requested or technically necessary.
 
+For frontend E2E, use Playwright when no E2E framework exists. An existing unit or component test runner alone is not an E2E framework. Retain an existing E2E framework if it supports the required browser flows and project execution setup. If it cannot, document the concrete technical limitation before selecting a replacement; missing coverage alone is not a framework limitation.
+
 For monorepos, detect the stack per affected package/service rather than assuming one global framework.

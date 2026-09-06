@@ -1,6 +1,6 @@
 ---
 name: dt-testing
-description: Adaptive, language-agnostic testing for new features, existing code, bug fixes, and test audits. Requires unit, integration, and project-appropriate security tests, with E2E selected from repository context.
+description: Adaptive, language-agnostic testing for new features, existing code, bug fixes, and test audits. Requires unit, integration, and project-appropriate security tests, and frontend E2E for all user-facing cases in scope.
 ---
 
 # Adaptive Testing
@@ -10,10 +10,10 @@ Use this skill after production-code changes or when tests are requested.
 ## Core rules
 
 1. Inspect the repository before choosing tools or frameworks.
-2. Reuse the existing test stack and conventions when available.
+2. Reuse the existing test stack and conventions when available. For frontend E2E, use Playwright if no E2E framework exists; retain an existing framework that adequately supports the required scenarios.
 3. Unit tests and integration tests are mandatory. Ensure both exist and cover the behavior in scope; add or update missing coverage and reuse adequate existing tests.
-4. Security testing is mandatory; read `references/security.md` and tailor coverage to the project’s stack, inputs, trust boundaries, and risks. Select additional E2E tests based on critical flows. Security cases may live in unit or integration suites when they exercise real security behavior.
-5. Backend E2E is optional when integration coverage is sufficient.
+4. Security testing is mandatory; read `references/security.md` and tailor coverage to the project’s stack, inputs, trust boundaries, and risks. Security cases may live in unit or integration suites when they exercise real security behavior.
+5. Frontend E2E is mandatory for all user-facing cases in scope, including success, validation, errors, and relevant edge cases. Read `references/test-selection.md` to inventory cases and map coverage. Unit and integration tests do not replace frontend E2E. Backend E2E is optional when integration coverage is sufficient.
 6. For bug fixes, prefer a failing regression test before the fix when practical.
 7. Do not change production behavior only to satisfy an incorrect test.
 8. After adding or updating tests, every agent must run the full project test suite, including existing tests, before declaring completion. Targeted runs alone are insufficient.

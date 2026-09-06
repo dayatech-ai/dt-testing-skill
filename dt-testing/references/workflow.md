@@ -4,13 +4,13 @@
 
 Detect the mode from the request and repository state.
 
-In every mode, read and apply `test-quality.md` before designing, adding, updating, reusing, or auditing any tests. Its quality criteria apply to every test type.
+In every mode, read and apply `test-quality.md` before designing, adding, updating, reusing, or auditing any tests. Its quality criteria apply to every test type. When the scope includes frontend behavior, read `test-selection.md`, inventory all user-facing cases, and ensure each has browser E2E coverage in every mode.
 
 ### New feature
 
 1. Understand expected behavior.
 2. Implement the feature.
-3. Plan mandatory unit, integration, and project-appropriate security coverage, plus relevant additional test types.
+3. Plan mandatory unit, integration, and project-appropriate security coverage, plus mandatory E2E for all frontend cases in scope.
 4. Add tests with the feature.
 5. Follow the test execution and completion requirements below.
 6. Review failures and test quality.
@@ -53,7 +53,7 @@ In every mode, read and apply `test-quality.md` before designing, adding, updati
 
 Review all tests added, updated, or relied on within the task scope against `test-quality.md`. Resolve quality issues within scope before the final full-suite run, and report any remaining quality gaps separately from execution results.
 
-Before completion, confirm meaningful unit, integration, and project-appropriate security coverage all exist for the scope. Adequate existing tests satisfy this requirement without duplication. Missing coverage remains an unresolved requirement, even if the available suite passes. In a read-only audit, report missing coverage without editing files.
+Before completion, confirm meaningful unit, integration, and project-appropriate security coverage all exist for the scope, and every frontend case in the inventory maps to an E2E test. Adequate existing tests satisfy this requirement without duplication. Missing coverage remains an unresolved requirement, even if the available suite passes. In a read-only audit, report missing coverage without editing files.
 
 1. During implementation, targeted tests may provide faster feedback.
 2. After completing test additions or updates, every agent must execute the full project suite using the documented commands. Selecting relevant test types controls which tests to add, not which existing suites to run.
@@ -66,11 +66,13 @@ Before completion, confirm meaningful unit, integration, and project-appropriate
 Report:
 - mandatory unit, integration, and project-appropriate security coverage, including reused tests and any gaps
 - security risks tested, coverage locations, and rationale for inapplicable security categories
-- additional E2E tests selected and why
+- frontend case inventory mapped to E2E tests, including reused coverage and missing cases
+- backend E2E tests selected and why
 - tests added/updated
 - quality review against `test-quality.md`, including issues corrected and unresolved quality gaps
 - test command/configuration and documentation added/updated, with file paths
 - commands run
 - full-suite pass/fail summary, including skipped tests and blocked suites
-- E2E tests not added and rationale
+- frontend E2E applicability (no frontend in scope), or unresolved coverage/execution blockers
+- optional backend E2E tests not added and rationale
 - unresolved failures or prerequisites and their effect on completion
