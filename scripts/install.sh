@@ -8,21 +8,22 @@ Usage: bash install.sh [--agent NAME] [--project DIR | --global] [options]
 Without --agent: detect agents, install globally by default, and update automatically.
 Agents: claude-code, antigravity, opencode, codex, all
 Options:
-  --repo OWNER/REPO  Download from a public GitHub Release (otherwise local source)
-  --version VERSION latest (default), or vMAJOR.MINOR.PATCH
-  --update          Back up and replace existing installations
-  --dry-run         Preview without changing installed files
-  --help            Show usage
+  --repo OWNER/REPO       Download from a public GitHub Release (otherwise local source)
+  --version VERSION       latest (default), or vMAJOR.MINOR.PATCH
+  --skill NAME[,NAME...]  Install only the named skill(s) (default: all)
+  --update                Back up and replace existing installations
+  --dry-run               Preview without changing installed files
+  --help                  Show usage
 EOF
 }
-agent= repo='__DT_RELEASE_REPO__' root= scope= version=latest update=false dry_run=false
+agent= repo='__DT_RELEASE_REPO__' root= scope= version=latest update=false dry_run=false skill_arg=
 [[ "$repo" != '__DT_'"RELEASE_REPO__" ]] || repo=
 while (($#)); do
   case "$1" in
-    --agent|--repo|--project|--version)
+    --agent|--repo|--project|--version|--skill)
       (($# >= 2)) && [[ -n "$2" && "$2" != --* ]] || fail "Missing value for $1"
       case "$1" in
-        --agent) agent=$2 ;; --repo) repo=$2 ;; --version) version=$2 ;;
+        --agent) agent=$2 ;; --repo) repo=$2 ;; --version) version=$2 ;; --skill) skill_arg=$2 ;;
         --project) [[ -z "$scope" ]] || fail 'Choose one scope'; scope=project; root=$2 ;;
       esac
       shift 2 ;;
@@ -70,13 +71,6 @@ for selected_agent in "${agents[@]}"; do
     [[ "$duplicate" == true ]] || paths+=("$candidate")
   done
 done
-for path in "${paths[@]}"; do
-  target=$root/$path/dt-testing
-  [[ ! -L "$target" ]] || fail "Refusing symlink destination: $target"
-  if [[ -e "$target" ]]; then
-    [[ "$update" == true && -d "$target" ]] || fail "Destination exists: $target (use --update)"
-  fi
-done
 work= stage=
 cleanup() {
   [[ -z "$stage" ]] || rm -rf -- "$stage"
@@ -86,6 +80,7 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
+discovered=()
 if [[ -n "$repo" ]]; then
   [[ "$repo" =~ ^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$ ]] || fail '--repo must be OWNER/REPO'
   for tool in curl unzip; do command -v "$tool" >/dev/null || fail "Required command: $tool"; done
@@ -102,51 +97,85 @@ if [[ -n "$repo" ]]; then
   tag=v${version#v}
   [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail 'Expected a stable release tag'
   base=https://github.com/$repo/releases/download/$tag
-  for asset in dt-testing.zip SHA256SUMS; do
+  for asset in skills.zip SHA256SUMS; do
     curl -fsSL --connect-timeout 15 --max-time 60 --max-filesize 2000000 "$base/$asset" -o "$work/$asset"
   done
-  expected=$(awk '$2 == "dt-testing.zip" {print $1}' "$work/SHA256SUMS")
-  actual=$("${hash[@]}" "$work/dt-testing.zip")
+  expected=$(awk '$2 == "skills.zip" {print $1}' "$work/SHA256SUMS")
+  actual=$("${hash[@]}" "$work/skills.zip")
   [[ "$expected" =~ ^[a-fA-F0-9]{64}$ && "${actual%% *}" == "$expected" ]] || fail 'Release checksum mismatch'
-  unzip -Z1 "$work/dt-testing.zip" > "$work/files"
-  # Allow only package files. Stream contents into regular files, never restore ZIP symlinks.
+  unzip -Z1 "$work/skills.zip" > "$work/files"
+  # Allow only package files, one top-level directory per skill. Stream contents
+  # into regular files, never restore ZIP symlinks.
   while IFS= read -r file; do
-    [[ "$file" == dt-testing/SKILL.md || "$file" == dt-testing/VERSION || "$file" =~ ^dt-testing/references/[a-zA-Z0-9_-]+\.md$ ]] || fail "Unsafe release archive path: $file"
+    [[ "$file" =~ ^([a-zA-Z0-9_-]+)/(SKILL\.md|VERSION|references/[a-zA-Z0-9_-]+\.md)$ ]] || fail "Unsafe release archive path: $file"
+    name=${BASH_REMATCH[1]}
+    known=false
+    for existing_name in "${discovered[@]+"${discovered[@]}"}"; do [[ "$existing_name" != "$name" ]] || known=true; done
+    [[ "$known" == true ]] || discovered+=("$name")
   done < "$work/files"
-  mkdir -p "$work/dt-testing/references"
+  ((${#discovered[@]})) || fail 'Release archive contains no skills'
+  for name in "${discovered[@]}"; do mkdir -p "$work/$name/references"; done
   while IFS= read -r file; do
-    unzip -p "$work/dt-testing.zip" "$file" > "$work/$file"
+    unzip -p "$work/skills.zip" "$file" > "$work/$file"
   done < "$work/files"
-  source=$work/dt-testing
-  [[ -f "$source/VERSION" && "$(cat "$source/VERSION")" == "${tag#v}" ]] || fail 'Package version does not match release tag'
-  printf '{"repo":"%s","version":"%s"}\n' "$repo" "$tag" > "$source/.release.json"
+  source=$work
+  for name in "${discovered[@]}"; do
+    [[ -f "$source/$name/VERSION" && "$(cat "$source/$name/VERSION")" == "${tag#v}" ]] || fail 'Package version does not match release tag'
+    printf '{"repo":"%s","version":"%s"}\n' "$repo" "$tag" > "$source/$name/.release.json"
+  done
 else
-  source=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)/dt-testing
+  source=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)/skills
+  for entry in "$source"/*/; do
+    name=$(basename "$entry")
+    [[ -f "$entry/SKILL.md" ]] && discovered+=("$name")
+  done
+  ((${#discovered[@]})) || fail "No skills found in source: $source"
 fi
-[[ -f "$source/SKILL.md" ]] || fail "Skill source missing: $source"
+requested=()
+if [[ -n "$skill_arg" ]]; then
+  IFS=',' read -ra requested <<< "$skill_arg"
+  for name in "${requested[@]}"; do
+    match=false
+    for candidate_skill in "${discovered[@]}"; do [[ "$candidate_skill" != "$name" ]] || match=true; done
+    [[ "$match" == true ]] || fail "Unknown skill: $name"
+  done
+else
+  requested=("${discovered[@]}")
+fi
 for path in "${paths[@]}"; do
-  parent=$root/$path
-  target=$parent/dt-testing
-  if [[ "$automatic" == true && -n "$repo" && -f "$target/.release.json" && -f "$target/SKILL.md" && -f "$target/VERSION" ]]; then
-    if [[ "$(cat "$target/VERSION")" == "${tag#v}" ]] && cmp -s "$source/.release.json" "$target/.release.json"; then
-      printf 'Already up to date: %s (%s)\n' "$target" "$tag"; continue
+  for name in "${requested[@]}"; do
+    target=$root/$path/$name
+    [[ ! -L "$target" ]] || fail "Refusing symlink destination: $target"
+    if [[ -e "$target" ]]; then
+      [[ "$update" == true && -d "$target" ]] || fail "Destination exists: $target (use --update)"
     fi
-  fi
-  if [[ "$dry_run" == true ]]; then printf 'Would install: %s\n' "$target"; continue; fi
-  mkdir -p "$parent"
-  stage=$(mktemp -d "$parent/.dt-testing-XXXXXX")
-  cp -R "$source" "$stage/dt-testing"
-  backup=
-  if [[ -d "$target" ]]; then
-    mkdir -p "$parent/../skill-backups"
-    backup=$(mktemp -d "$parent/../skill-backups/dt-testing-XXXXXX")/dt-testing
-    mv "$target" "$backup"
-  fi
-  if ! mv "$stage/dt-testing" "$target"; then
-    if [[ -n "$backup" ]]; then mv "$backup" "$target" || fail "Restore failed; recover from $backup"; fi
-    fail "Could not replace $target"
-  fi
-  [[ -z "$backup" ]] || printf 'Backup: %s\n' "$backup"
-  rmdir "$stage"; stage=
-  printf 'Installed: %s\n' "$target"
+  done
+done
+for path in "${paths[@]}"; do
+  for name in "${requested[@]}"; do
+    parent=$root/$path
+    target=$parent/$name
+    if [[ "$automatic" == true && -n "$repo" && -f "$target/.release.json" && -f "$target/SKILL.md" && -f "$target/VERSION" ]]; then
+      if [[ "$(cat "$target/VERSION")" == "${tag#v}" ]] && cmp -s "$source/$name/.release.json" "$target/.release.json"; then
+        printf 'Already up to date: %s (%s)\n' "$target" "$tag"; continue
+      fi
+    fi
+    if [[ "$dry_run" == true ]]; then printf 'Would install: %s\n' "$target"; continue; fi
+    mkdir -p "$parent"
+    stage=$(mktemp -d "$parent/.$name-XXXXXX")
+    cp -R "$source/$name" "$stage/$name"
+    backup=
+    if [[ -d "$target" ]]; then
+      mkdir -p "$parent/../skill-backups"
+      backup=$(mktemp -d "$parent/../skill-backups/$name-XXXXXX")/$name
+      mv "$target" "$backup"
+    fi
+    if ! mv "$stage/$name" "$target"; then
+      if [[ -n "$backup" ]]; then mv "$backup" "$target" || fail "Restore failed; recover from $backup"; fi
+      fail "Could not replace $target"
+    fi
+    [[ -z "$backup" ]] || printf 'Backup: %s\n' "$backup"
+    rmdir "$stage"; stage=
+    printf 'Installed: %s\n' "$target"
+  done
 done

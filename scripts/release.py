@@ -48,6 +48,18 @@ def plan():
     return "v" + ".".join(map(str, version)) if version else ""
 
 
+def discover_skills():
+    """List installable skill packages under skills/, sorted for reproducible builds."""
+    skills_root = ROOT / "skills"
+    skills = sorted(p for p in skills_root.iterdir() if p.is_dir() and (p / "SKILL.md").is_file())
+    if not skills:
+        raise ValueError("No skills found under skills/")
+    for skill in skills:
+        if not re.fullmatch(r"[a-zA-Z0-9_-]+", skill.name):
+            raise ValueError(f"Unsafe skill directory name: {skill.name}")
+    return skills
+
+
 def build(tag, output, repo=None):
     repo = repo or os.environ.get("GITHUB_REPOSITORY", "")
     if repo and not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
@@ -55,14 +67,17 @@ def build(tag, output, repo=None):
     if not re.fullmatch(r"v\d+\.\d+\.\d+", tag):
         raise ValueError("Expected vMAJOR.MINOR.PATCH")
     output.mkdir(parents=True, exist_ok=True)
-    source = ROOT / "dt-testing"
-    files = [source / "SKILL.md", *sorted((source / "references").glob("*.md"))]
-    with zipfile.ZipFile(output / "dt-testing.zip", "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        for path in files:
-            info = zipfile.ZipInfo("dt-testing/" + path.relative_to(source).as_posix())
-            info.compress_type = zipfile.ZIP_DEFLATED
-            archive.writestr(info, path.read_bytes())
-        archive.writestr("dt-testing/VERSION", tag[1:] + "\n")
+    # All skills under skills/ ship together in one archive; the installer
+    # picks which ones to place on disk (all by default, or --skill NAME).
+    with zipfile.ZipFile(output / "skills.zip", "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for source in discover_skills():
+            name = source.name
+            files = [source / "SKILL.md", *sorted((source / "references").glob("*.md"))]
+            for path in files:
+                info = zipfile.ZipInfo(f"{name}/" + path.relative_to(source).as_posix())
+                info.compress_type = zipfile.ZIP_DEFLATED
+                archive.writestr(info, path.read_bytes())
+            archive.writestr(f"{name}/VERSION", tag[1:] + "\n")
     # Keep each standalone installer small as the project grows.
     for installer in ("install.sh", "install.ps1"):
         content = (ROOT / "scripts" / installer).read_text()
@@ -71,10 +86,10 @@ def build(tag, output, repo=None):
         (output / installer).write_text(content)
         if (output / installer).stat().st_size > 16 * 1024:
             raise ValueError(f"{installer} exceeds the 16 KiB size budget")
-    if (output / "dt-testing.zip").stat().st_size > 128 * 1024:
+    if (output / "skills.zip").stat().st_size > 128 * 1024:
         raise ValueError("Skill package exceeds the 128 KiB size budget")
     lines = [hashlib.sha256((output / name).read_bytes()).hexdigest() + "  " + name
-             for name in ("dt-testing.zip", "install.sh", "install.ps1")]
+             for name in ("skills.zip", "install.sh", "install.ps1")]
     (output / "SHA256SUMS").write_text("\n".join(lines) + "\n")
 
 

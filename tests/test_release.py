@@ -1,12 +1,13 @@
 import hashlib
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
 import zipfile
 
-from scripts.release import build, next_version, plan
+from scripts.release import ROOT, build, next_version, plan
 
 
 class ReleaseTests(unittest.TestCase):
@@ -58,8 +59,8 @@ class ReleaseTests(unittest.TestCase):
     def test_package_assets_and_size(self):
         build("v1.2.3", self.root / "dist")
         dist = self.root / "dist"
-        self.assertEqual({p.name for p in dist.iterdir()}, {"install.sh", "install.ps1", "dt-testing.zip", "SHA256SUMS"})
-        with zipfile.ZipFile(dist / "dt-testing.zip") as archive:
+        self.assertEqual({p.name for p in dist.iterdir()}, {"install.sh", "install.ps1", "skills.zip", "SHA256SUMS"})
+        with zipfile.ZipFile(dist / "skills.zip") as archive:
             self.assertIn("dt-testing/references/workflow.md", archive.namelist())
             self.assertNotIn("dt-testing/README.md", archive.namelist())
             self.assertEqual(archive.read("dt-testing/VERSION"), b"1.2.3\n")
@@ -67,6 +68,36 @@ class ReleaseTests(unittest.TestCase):
         for line in (dist / "SHA256SUMS").read_text().splitlines():
             digest, name = line.split()
             self.assertEqual(hashlib.sha256((dist / name).read_bytes()).hexdigest(), digest)
+
+    def test_multiple_skills_are_all_packaged(self):
+        skills_root = self.root / "skills"
+        for name in ("skill-one", "skill-two"):
+            skill = skills_root / name
+            (skill / "references").mkdir(parents=True)
+            (skill / "SKILL.md").write_text(f"# {name}\n")
+            (skill / "references" / "notes.md").write_text("notes\n")
+        # build() also reads the installer templates from ROOT/scripts; provide them
+        # so only skill discovery/packaging is exercised against the fake ROOT.
+        (self.root / "scripts").mkdir(parents=True)
+        for installer in ("install.sh", "install.ps1"):
+            shutil.copy(ROOT / "scripts" / installer, self.root / "scripts" / installer)
+        with patch("scripts.release.ROOT", self.root):
+            build("v0.1.0", self.root / "dist")
+        with zipfile.ZipFile(self.root / "dist" / "skills.zip") as archive:
+            names = set(archive.namelist())
+        self.assertEqual(names, {
+            "skill-one/SKILL.md", "skill-one/references/notes.md", "skill-one/VERSION",
+            "skill-two/SKILL.md", "skill-two/references/notes.md", "skill-two/VERSION",
+        })
+
+    def test_discover_skills_rejects_unsafe_name(self):
+        skills_root = self.root / "skills"
+        skill = skills_root / "bad name"
+        (skill / "references").mkdir(parents=True)
+        (skill / "SKILL.md").write_text("# bad\n")
+        with patch("scripts.release.ROOT", self.root):
+            with self.assertRaises(ValueError):
+                build("v0.1.0", self.root / "dist")
 
 
 if __name__ == "__main__":

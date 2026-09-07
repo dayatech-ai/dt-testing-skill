@@ -1,11 +1,13 @@
 #requires -Version 5.1
 <#
 .SYNOPSIS
-Install/update dt-testing from local source or a public GitHub Release.
+Install/update skills from local source or a public GitHub Release.
 .EXAMPLE
 .\install.ps1 -Repo OWNER/REPO -Agent all -Global
 .EXAMPLE
 .\install.ps1 -Repo OWNER/REPO -Agent codex -Project C:\work\project -Update
+.EXAMPLE
+.\install.ps1 -Repo OWNER/REPO -Agent codex -Skill dt-testing -Update
 #>
 [CmdletBinding(DefaultParameterSetName = 'Global')]
 param(
@@ -19,6 +21,7 @@ param(
     [string]$Repo = '',
     [ValidatePattern('^(latest|v?[0-9]+\.[0-9]+\.[0-9]+)$')]
     [string]$Version = 'latest',
+    [string[]]$Skill,
     [switch]$Update,
     [switch]$DryRun
 )
@@ -72,14 +75,7 @@ try {
         else { $selected += $paths[$name] }
     }
     $selected = @($selected | Select-Object -Unique)
-    $targets = @($selected | ForEach-Object { Join-Path (Join-Path $root $_) 'dt-testing' })
-    foreach ($target in $targets) {
-        $existing = Get-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue
-        if ($existing) {
-            if ($existing.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "Refusing linked destination: $target" }
-            if (-not $Update -or -not $existing.PSIsContainer) { throw "Destination exists: $target (use -Update)" }
-        }
-    }
+    $discoveredSkills = @()
     if ($Repo) {
         [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
         $headers = @{ 'User-Agent' = 'dt-testing-installer' }
@@ -91,21 +87,23 @@ try {
         if ($tag -cnotmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') { throw 'Expected a stable release tag' }
         $work = Join-Path ([IO.Path]::GetTempPath()) ('dt-testing-' + [guid]::NewGuid().ToString('N'))
         $null = New-Item -ItemType Directory -Path $work
-        foreach ($asset in @('dt-testing.zip', 'SHA256SUMS')) {
+        foreach ($asset in @('skills.zip', 'SHA256SUMS')) {
             $destination = Join-Path $work $asset
             Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/$Repo/releases/download/$tag/$asset" -Headers $headers -OutFile $destination -TimeoutSec 60
             if ((Get-Item -LiteralPath $destination).Length -gt 2000000) { throw 'Download exceeds 2 MB limit' }
         }
         $checksums = Get-Content -LiteralPath (Join-Path $work 'SHA256SUMS')
-        $expected = @($checksums | Where-Object { $_ -match '^([a-fA-F0-9]{64})\s+dt-testing\.zip$' } | ForEach-Object { ($_ -split '\s+')[0] })
-        $zipPath = Join-Path $work 'dt-testing.zip'
+        $expected = @($checksums | Where-Object { $_ -match '^([a-fA-F0-9]{64})\s+skills\.zip$' } | ForEach-Object { ($_ -split '\s+')[0] })
+        $zipPath = Join-Path $work 'skills.zip'
         if ($expected.Count -ne 1 -or (Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash -ne $expected[0]) { throw 'Release checksum mismatch' }
         Add-Type -AssemblyName System.IO.Compression.FileSystem
         $archive = [IO.Compression.ZipFile]::OpenRead($zipPath)
+        $seen = [ordered]@{}
         try {
             $total = 0
             foreach ($entry in $archive.Entries) {
-                if ($entry.FullName -cnotmatch '^dt-testing/(SKILL\.md|VERSION|references/[a-zA-Z0-9_-]+\.md)$') { throw "Unsafe release archive path: $($entry.FullName)" }
+                if ($entry.FullName -cmatch '^([a-zA-Z0-9_-]+)/(SKILL\.md|VERSION|references/[a-zA-Z0-9_-]+\.md)$') { $seen[$Matches[1]] = $true }
+                else { throw "Unsafe release archive path: $($entry.FullName)" }
                 $total += $entry.Length
                 if ($total -gt 2000000) { throw 'Expanded release exceeds 2 MB limit' }
             }
@@ -116,13 +114,45 @@ try {
                 [IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $destination, $false)
             }
         } finally { $archive.Dispose() }
-        $source = Join-Path $work 'dt-testing'
-        if ((Get-Content -LiteralPath (Join-Path $source 'VERSION') -Raw).Trim() -ne $tag.Substring(1)) { throw 'Package version does not match release tag' }
-        $metadata = @{ repo = $Repo; version = $tag } | ConvertTo-Json -Compress
-        [IO.File]::WriteAllText((Join-Path $source '.release.json'), $metadata, (New-Object Text.UTF8Encoding($false)))
-    } else { $source = Join-Path (Split-Path -Parent $PSScriptRoot) 'dt-testing' }
-    if (-not (Test-Path -LiteralPath (Join-Path $source 'SKILL.md') -PathType Leaf)) { throw "Skill source missing: $source" }
-    foreach ($target in $targets) {
+        $discoveredSkills = @($seen.Keys)
+        if ($discoveredSkills.Count -eq 0) { throw 'Release archive contains no skills' }
+        $source = $work
+        foreach ($name in $discoveredSkills) {
+            $skillSource = Join-Path $source $name
+            if ((Get-Content -LiteralPath (Join-Path $skillSource 'VERSION') -Raw).Trim() -ne $tag.Substring(1)) { throw 'Package version does not match release tag' }
+            $metadata = @{ repo = $Repo; version = $tag } | ConvertTo-Json -Compress
+            [IO.File]::WriteAllText((Join-Path $skillSource '.release.json'), $metadata, (New-Object Text.UTF8Encoding($false)))
+        }
+    } else {
+        $source = Join-Path (Split-Path -Parent $PSScriptRoot) 'skills'
+        $discoveredSkills = @(Get-ChildItem -LiteralPath $source -Directory -ErrorAction SilentlyContinue |
+            Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'SKILL.md') } | ForEach-Object { $_.Name })
+        if ($discoveredSkills.Count -eq 0) { throw "No skills found in source: $source" }
+    }
+    if ($Skill) {
+        foreach ($name in $Skill) {
+            if ($discoveredSkills -notcontains $name) { throw "Unknown skill: $name" }
+        }
+        $requestedSkills = @($Skill)
+    } else {
+        $requestedSkills = $discoveredSkills
+    }
+    $targets = @()
+    foreach ($path in $selected) {
+        foreach ($name in $requestedSkills) {
+            $targets += [pscustomobject]@{ Skill = $name; Target = Join-Path (Join-Path $root $path) $name }
+        }
+    }
+    foreach ($t in $targets) {
+        $existing = Get-Item -LiteralPath $t.Target -Force -ErrorAction SilentlyContinue
+        if ($existing) {
+            if ($existing.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "Refusing linked destination: $($t.Target)" }
+            if (-not $Update -or -not $existing.PSIsContainer) { throw "Destination exists: $($t.Target) (use -Update)" }
+        }
+    }
+    foreach ($t in $targets) {
+        $target = $t.Target
+        $name = $t.Skill
         if ($automatic -and $Repo -and (Test-Path -LiteralPath (Join-Path $target 'SKILL.md')) -and (Test-Path -LiteralPath (Join-Path $target 'VERSION')) -and (Test-Path -LiteralPath (Join-Path $target '.release.json'))) {
             $installed = $null
             try { $installed = Get-Content -LiteralPath (Join-Path $target '.release.json') -Raw | ConvertFrom-Json } catch { }
@@ -133,15 +163,15 @@ try {
         if ($DryRun) { Write-Host "Would install: $target"; continue }
         $parent = Split-Path -Parent $target
         $null = New-Item -ItemType Directory -Path $parent -Force
-        $stage = Join-Path $parent ('.dt-testing-' + [guid]::NewGuid().ToString('N'))
+        $stage = Join-Path $parent ('.' + $name + '-' + [guid]::NewGuid().ToString('N'))
         $null = New-Item -ItemType Directory -Path $stage
-        $staged = Join-Path $stage 'dt-testing'
-        Copy-Item -LiteralPath $source -Destination $staged -Recurse -Force
+        $staged = Join-Path $stage $name
+        Copy-Item -LiteralPath (Join-Path $source $name) -Destination $staged -Recurse -Force
         $backup = $null
         if (Test-Path -LiteralPath $target) {
             $backupRoot = Join-Path (Split-Path -Parent $parent) 'skill-backups'
             $null = New-Item -ItemType Directory -Path $backupRoot -Force
-            $backup = Join-Path $backupRoot ('dt-testing-' + [guid]::NewGuid().ToString('N'))
+            $backup = Join-Path $backupRoot ($name + '-' + [guid]::NewGuid().ToString('N'))
             Move-Item -LiteralPath $target -Destination $backup
         }
         try { Move-Item -LiteralPath $staged -Destination $target }

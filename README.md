@@ -24,6 +24,8 @@ Mode tanpa `--agent` / `-Agent` mendeteksi agent dari perintah CLI atau direktor
 
 Default instalasi adalah global. Mode otomatis memasang skill yang belum ada, memperbarui versi lama dengan backup, dan melewati instalasi dari repository serta versi yang sama. Perubahan lokal tetap dipertahankan ketika versi sama dilewati. Metadata versi tetap diperiksa setelah paket terbaru diunduh dan diverifikasi. Gunakan `--agent NAME --update` / `-Agent NAME -Update` untuk memaksa pemasangan ulang versi sama.
 
+Paket ini dapat berisi lebih dari satu skill (satu folder per skill di `skills/`). Secara default installer memasang **semua** skill dalam release ke setiap lokasi agent yang dipilih. Untuk memasang subset saja, tambahkan `--skill NAME[,NAME...]` pada Bash atau `-Skill NAME` (bisa berupa array, mis. `-Skill dt-testing,skill-lain`) pada PowerShell.
+
 ### Memilih agent secara eksplisit
 
 Gunakan perintah berikut untuk **install pertama maupun update**. Ganti `dayatech-ai/dt-testing-skill` dengan repository tujuan dan `codex` dengan agent pilihan.
@@ -57,7 +59,7 @@ Untuk instalasi per proyek, tambahkan `--project /path/to/project` pada perintah
 1. Push seluruh isi paket ini ke repository GitHub milikmu dengan branch `main`. Workflow memakai `${{ github.repository }}` sehingga tidak perlu mengedit URL repository di file workflow.
 2. Aktifkan GitHub Actions dan izinkan workflow memakai `contents: write` sesuai kebijakan repository/organisasi. Workflow menggunakan `GITHUB_TOKEN` bawaan; tidak membutuhkan PAT atau secret tambahan.
 3. Gunakan Conventional Commits. Jika squash merge, judul commit hasil squash harus mengikuti format tersebut.
-4. Setelah commit masuk ke `main`, workflow menjalankan seluruh test dan pemeriksaan ukuran paket. Jika lulus dan terdapat perubahan yang layak dirilis, workflow menentukan versi, membuat tag serta GitHub Release, lalu mengunggah `install.sh`, `install.ps1`, `dt-testing.zip`, dan `SHA256SUMS`.
+4. Setelah commit masuk ke `main`, workflow menjalankan seluruh test dan pemeriksaan ukuran paket. Jika lulus dan terdapat perubahan yang layak dirilis, workflow menentukan versi, membuat tag serta GitHub Release, lalu mengunggah `install.sh`, `install.ps1`, `skills.zip`, dan `SHA256SUMS`. `skills.zip` memuat setiap folder skill yang ada di `skills/` pada commit tersebut.
 
 | Commit sejak tag versi terakhir | Perubahan versi |
 | --- | --- |
@@ -88,7 +90,7 @@ Untuk Windows dari root paket:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -Agent all -Project "C:\work\project"
 ```
 
-Tambahkan `--update` pada Bash atau `-Update` pada PowerShell untuk mengganti instalasi lama dengan backup. Tanpa `--repo`, installer memakai folder `dt-testing/` lokal; source ini tidak memiliki versi release sampai dikemas.
+Tambahkan `--update` pada Bash atau `-Update` pada PowerShell untuk mengganti instalasi lama dengan backup. Tanpa `--repo`, installer memakai folder `skills/` lokal dan memasang setiap skill yang ditemukan di dalamnya; source ini tidak memiliki versi release sampai dikemas.
 
 | Agent | Lokasi dalam proyek | Lokasi global |
 | --- | --- | --- |
@@ -100,6 +102,10 @@ Tambahkan `--update` pada Bash atau `-Update` pada PowerShell untuk mengganti in
 Antigravity dan Codex berbagi salinan pada instalasi proyek. OpenCode juga dapat menemukan skill pada direktori kompatibel `.agents` dan `.claude`; installer menyalin konten yang sama ke lokasi native masing-masing. Jika memakai lokasi global kustom, salin seluruh folder skill ke direktori yang dikonfigurasi. Untuk versi lama Antigravity, `.agent/skills` merupakan lokasi yang kompatibel.
 
 Lokasi mengacu pada dokumentasi resmi: [Claude Code](https://code.claude.com/docs/en/skills), [Antigravity](https://antigravity.google/docs/skills), [OpenCode](https://opencode.ai/docs/skills/), dan [Codex](https://developers.openai.com/codex/skills).
+
+### Menambahkan skill baru ke paket ini
+
+Tambahkan folder baru di `skills/<nama-skill>/` berisi `SKILL.md` (dan opsional `references/*.md`), mengikuti struktur `skills/dt-testing/` yang sudah ada. Tidak perlu mengubah `scripts/release.py` atau installer — keduanya mendeteksi seluruh folder di `skills/` secara otomatis saat build/release berikutnya, dan skill baru itu akan ikut terpasang secara default (atau dipilih lewat `--skill nama-skill`).
 
 ## Pemakaian
 

@@ -6,12 +6,14 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
 from scripts.release import ROOT, build
 
 INSTALLER = ROOT / 'scripts/install.sh'
-SOURCE = ROOT / 'dt-testing'
+SOURCE = ROOT / 'skills' / 'dt-testing'
+SKILLS_SOURCE = ROOT / 'skills'
 
 
 class InstallTests(unittest.TestCase):
@@ -64,6 +66,75 @@ case "$url" in
 esac
 ''')
         return dist
+
+    def mock_release_with_skills(self, names):
+        # Package a fake ROOT with several skills, so the install.sh under test
+        # (the real, checked-in script) can be exercised against a multi-skill release.
+        fake_root = self.root / 'fake-repo'
+        for name in names:
+            skill = fake_root / 'skills' / name
+            (skill / 'references').mkdir(parents=True)
+            (skill / 'SKILL.md').write_text(f'---\nname: {name}\n---\n# {name}\n')
+        (fake_root / 'scripts').mkdir(parents=True)
+        for installer in ('install.sh', 'install.ps1'):
+            shutil.copy(ROOT / 'scripts' / installer, fake_root / 'scripts' / installer)
+        dist = self.root / 'dist'
+        with patch('scripts.release.ROOT', fake_root):
+            build('v1.2.3', dist)
+        self.env['FIXTURE_DIST'] = str(dist)
+        self.env['CURL_LOG'] = str(self.root / 'curl.log')
+        self.fake_command('curl', '''
+output= url=
+while (($#)); do
+  case "$1" in
+    -o) output=$2; shift 2 ;;
+    --connect-timeout|--max-time|--max-filesize|-w) shift 2 ;;
+    https://*) url=$1; shift ;;
+    *) shift ;;
+  esac
+done
+printf '%s\\n' "$url" >> "$CURL_LOG"
+case "$url" in
+  https://github.com/owner/repo/releases/latest) printf 'https://github.com/owner/repo/releases/tag/v1.2.3' ;;
+  https://github.com/owner/repo/releases/download/v1.2.3/*) cp "$FIXTURE_DIST/${url##*/}" "$output" ;;
+  *) exit 22 ;;
+esac
+''')
+        return dist
+
+    def test_default_local_install_includes_every_skill_under_skills_dir(self):
+        self.run_install('--agent', 'codex')
+        installed = {p.name for p in (self.project / '.agents/skills').iterdir()}
+        expected = {p.name for p in SKILLS_SOURCE.iterdir() if p.is_dir() and (p / 'SKILL.md').is_file()}
+        self.assertEqual(installed, expected)
+
+    def test_remote_install_defaults_to_every_skill_in_the_release(self):
+        self.mock_release_with_skills(['alpha', 'beta'])
+        self.run_install('--repo', 'owner/repo', '--agent', 'codex')
+        base = self.project / '.agents/skills'
+        self.assertTrue((base / 'alpha/SKILL.md').is_file())
+        self.assertTrue((base / 'beta/SKILL.md').is_file())
+
+    def test_skill_flag_installs_only_the_requested_subset(self):
+        self.mock_release_with_skills(['alpha', 'beta'])
+        self.run_install('--repo', 'owner/repo', '--agent', 'codex', '--skill', 'alpha')
+        base = self.project / '.agents/skills'
+        self.assertTrue((base / 'alpha/SKILL.md').is_file())
+        self.assertFalse((base / 'beta').exists())
+
+    def test_skill_flag_accepts_a_comma_separated_list(self):
+        self.mock_release_with_skills(['alpha', 'beta', 'gamma'])
+        self.run_install('--repo', 'owner/repo', '--agent', 'codex', '--skill', 'alpha,gamma')
+        base = self.project / '.agents/skills'
+        self.assertTrue((base / 'alpha').exists())
+        self.assertTrue((base / 'gamma').exists())
+        self.assertFalse((base / 'beta').exists())
+
+    def test_unknown_skill_name_is_rejected(self):
+        self.mock_release_with_skills(['alpha'])
+        result = self.run_install('--repo', 'owner/repo', '--agent', 'codex', '--skill', 'missing', success=False)
+        self.assertIn('Unknown skill', result.stderr)
+        self.assertEqual(list(self.project.iterdir()), [])
 
     def test_release_pipe_install_and_repeat_without_parameters(self):
         dist = self.mock_release()
@@ -134,24 +205,24 @@ esac
         self.assertEqual(list(self.project.iterdir()), [])
         urls = (self.root / 'curl.log').read_text()
         self.assertNotIn('/latest', urls)
-        self.assertIn('/download/v1.2.3/dt-testing.zip', urls)
+        self.assertIn('/download/v1.2.3/skills.zip', urls)
 
     def test_checksum_failure_keeps_old_install(self):
         dist = self.mock_release()
         self.run_install('--agent', 'codex')
         target = self.project / '.agents/skills/dt-testing/SKILL.md'
         previous = target.read_bytes()
-        (dist / 'SHA256SUMS').write_text('bad  dt-testing.zip\n')
+        (dist / 'SHA256SUMS').write_text('bad  skills.zip\n')
         result = self.run_install('--repo', 'owner/repo', '--agent', 'codex', '--update', success=False)
         self.assertIn('checksum', result.stderr)
         self.assertEqual(target.read_bytes(), previous)
 
     def test_archive_traversal_rejected(self):
         dist = self.mock_release()
-        with zipfile.ZipFile(dist / 'dt-testing.zip', 'w') as archive:
+        with zipfile.ZipFile(dist / 'skills.zip', 'w') as archive:
             archive.writestr('dt-testing/../../escape', 'bad')
-        digest = hashlib.sha256((dist / 'dt-testing.zip').read_bytes()).hexdigest()
-        (dist / 'SHA256SUMS').write_text(digest + '  dt-testing.zip\n')
+        digest = hashlib.sha256((dist / 'skills.zip').read_bytes()).hexdigest()
+        (dist / 'SHA256SUMS').write_text(digest + '  skills.zip\n')
         result = self.run_install('--repo', 'owner/repo', '--agent', 'codex', success=False)
         self.assertIn('Unsafe', result.stderr)
         self.assertEqual(list(self.project.iterdir()), [])

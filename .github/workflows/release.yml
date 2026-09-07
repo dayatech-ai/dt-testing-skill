@@ -87,5 +87,5 @@ jobs:
           else
             gh release create "$RELEASE_TAG" --target "$RELEASE_COMMIT" --title "$RELEASE_TAG" --generate-notes --draft
           fi
-          gh release upload "$RELEASE_TAG" dist/dt-testing.zip dist/install.sh dist/install.ps1 dist/SHA256SUMS --clobber
+          gh release upload "$RELEASE_TAG" dist/skills.zip dist/install.sh dist/install.ps1 dist/SHA256SUMS --clobber
           gh release edit "$RELEASE_TAG" --draft=false --latest
