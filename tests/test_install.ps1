@@ -60,6 +60,14 @@ try {
     Assert-True ($afterAuto.Count -eq 1) 'Same version auto run does not create a backup'
     Remove-Item Function:\Get-Command
 
+    Assert-Fails { & $installer -Agent codex -Project $project -Repo owner/repo -Skill missing } 'Unknown skill'
+
+    # -Skill limits install to the named subset; without it every packaged skill installs.
+    $skillProject = Join-Path $testRoot 'skill project'
+    $null = New-Item -ItemType Directory -Path $skillProject
+    & $installer -Agent codex -Project $skillProject -Repo owner/repo -Skill dt-testing
+    Assert-True (Test-Path -LiteralPath (Join-Path $skillProject '.agents/skills/dt-testing/SKILL.md')) '-Skill installs the named skill'
+
     # Corrupt a copied checksum fixture and verify the existing installation is preserved.
     $badFixture = Join-Path $testRoot 'bad-fixture'
     Copy-Item -LiteralPath $fixture -Destination $badFixture -Recurse
@@ -69,13 +77,6 @@ try {
     Assert-Fails { & $installer -Agent codex -Project $project -Repo owner/repo -Update } 'checksum'
     Assert-True ((Get-FileHash -LiteralPath (Join-Path $target 'SKILL.md')).Hash -eq $previous) 'Failed download preserves installation'
     Assert-Fails { & $installer -Agent codex -Project $project -Version 1.2.3 } 'requires -Repo'
-    Assert-Fails { & $installer -Agent codex -Project $project -Repo owner/repo -Skill missing } 'Unknown skill'
-
-    # -Skill limits install to the named subset; without it every packaged skill installs.
-    $skillProject = Join-Path $testRoot 'skill project'
-    $null = New-Item -ItemType Directory -Path $skillProject
-    & $installer -Agent codex -Project $skillProject -Repo owner/repo -Skill dt-testing
-    Assert-True (Test-Path -LiteralPath (Join-Path $skillProject '.agents/skills/dt-testing/SKILL.md')) '-Skill installs the named skill'
     Write-Host 'Windows installer checks passed.'
 } finally {
     Remove-Item -LiteralPath $testRoot -Recurse -Force
